@@ -19,6 +19,7 @@ use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Imaging\IconFactory;
 use TYPO3\CMS\Core\Information\Typo3Version;
 use TYPO3\CMS\Core\Localization\LanguageService;
+use TYPO3\CMS\Core\Service\FlexFormService;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Configuration\BackendConfigurationManager;
 use TYPO3\CMS\Fluid\View\StandaloneView;
@@ -62,11 +63,14 @@ class GridelementsPreviewRenderer extends StandardContentPreviewRenderer impleme
      */
     protected string $backPath = '';
 
+    protected FlexFormService $flexFormService;
+
     public function __construct()
     {
         $this->extentensionConfiguration = GeneralUtility::makeInstance(ExtensionConfiguration::class)->get('gridelements');
         $this->helper = GridelementsHelper::getInstance();
         $this->iconFactory = GeneralUtility::makeInstance(IconFactory::class);
+        $this->flexFormService = GeneralUtility::makeInstance(FlexFormService::class);
         $this->cleanupCollapsedStatesInUC();
     }
 
@@ -126,6 +130,7 @@ class GridelementsPreviewRenderer extends StandardContentPreviewRenderer impleme
     {
         $context = $item->getContext();
         $record = $item->getRecord();
+        $pluginOptions = $this->flexFormService->convertFlexFormContentToArray($record['pi_flexform']);
         $grid = GeneralUtility::makeInstance(Grid::class, $context);
         $helper = GeneralUtility::makeInstance(GridElementsHelper::class);
         $gridContainerId = $record['uid'];
@@ -194,6 +199,8 @@ class GridelementsPreviewRenderer extends StandardContentPreviewRenderer impleme
             'maxTitleLength' => $this->getBackendUser()->uc['titleLen'] ?? 20,
             'gridElementsBackendLayout' => $layout,
             'gridElementsContainer' => $grid,
+            'pluginOptions' => $pluginOptions,
+            'data' => $record,
         ]);
 
         return $view->render();
