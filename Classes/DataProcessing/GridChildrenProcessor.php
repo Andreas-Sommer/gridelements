@@ -176,7 +176,7 @@ class GridChildrenProcessor implements DataProcessorInterface
             ),
             'where' => 'tx_gridelements_container = ' . (int)$cObj->data['uid'],
         ];
-        $records = $cObj->getRecords('tt_content', $queryConfiguration);
+        $records = $this->getChildRecords($cObj, $queryConfiguration);
         foreach ($records as $record) {
             $this->processChildRecord($record);
         }
@@ -325,6 +325,35 @@ class GridChildrenProcessor implements DataProcessorInterface
                 $this->processedRecordVariables[$id]
             );
         }
+    }
+
+    protected function getChildRecords(ContentObjectRenderer $cObj, array $queryConfiguration): array
+    {
+        if ((int)($cObj->data['pid'] ?? 0) === (int)($GLOBALS['TSFE']->id ?? 0)) {
+            return $cObj->getRecords('tt_content', $queryConfiguration);
+        }
+
+        // Global containers like footer/flyout live outside the current page and need default-language fallback.
+        $records = [];
+        $statement = $cObj->exec_getQuery('tt_content', $queryConfiguration);
+        $pageRepository = $GLOBALS['TSFE']->sys_page ?? null;
+
+        while ($row = $statement->fetchAssociative()) {
+            if ($pageRepository !== null) {
+                $pageRepository->versionOL('tt_content', $row, true);
+                if (!is_array($row)) {
+                    continue;
+                }
+
+                $overlaidRow = $pageRepository->getLanguageOverlay('tt_content', $row);
+                $records[] = is_array($overlaidRow) ? $overlaidRow : $row;
+                continue;
+            }
+
+            $records[] = $row;
+        }
+
+        return $records;
     }
 
     /**
